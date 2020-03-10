@@ -31,9 +31,8 @@ def gather_job_links(driver, search_link):
         job_headers = driver.find_elements_by_class_name('jobHeader')
         for job in job_headers:
             links.append(job.find_element_by_css_selector('a').get_attribute('href'))
-        print(links)
         try:
-            driver.find_element_by_class_name('next').find_element_by_css_selector('a').click()
+            driver.find_element_by_class_name('next').find_element_by_css_selector('a').click()  # close pop-up
             time.sleep(random.randint(2, 4))
         except NoSuchElementException:
             break
@@ -41,6 +40,7 @@ def gather_job_links(driver, search_link):
             driver.find_element_by_id("prefix__icon-close-1").click()
         except NoSuchElementException:
             pass
+    print(f'{len(links)} links were gathered')
     return links
 
 
@@ -79,7 +79,10 @@ def gather_data_from_links(driver, links=[]):
             values = driver.find_elements_by_class_name("value")
             for field in zip(fields, values):
                 field_name = field[0].text
-                field_value = field[1].text
+                if field_name == 'Competitors':
+                    field_value = ','.join(field[1].text.split(','))
+                else:
+                    field_value = field[1].text
                 glassdoor_jobs.loc[i, field_name] = field_value
         except NoSuchElementException:
             pass
@@ -91,14 +94,18 @@ def gather_data_from_links(driver, links=[]):
                 driver.find_element_by_class_name('margRtSm.css-16h0h8a.e1dyssh91').text)
         except NoSuchElementException:
             pass
-        return glassdoor_jobs
+
+    return glassdoor_jobs
 
 
 def main():
     driver = set_up_connection()
+    # TODO add several links and loop over them
     links = gather_job_links(driver, "https://www.glassdoor.com/Job/israel-jobs-SRCH_IL.0,6_IN119.htm")
     glassdoor_jobs = gather_data_from_links(driver, links)
-    print(glassdoor_jobs)
+    glassdoor_jobs.to_excel("glassdoor_jobs_df1.xlsx")
+
 
 if __name__ == '__main__':
     main()
+
