@@ -18,6 +18,7 @@ INITIAL_LINKS = [
 
     ]
 
+
 def set_up_connection():
     """This function creates a connection with chrome and creates a webdriver object"""
 
@@ -54,7 +55,7 @@ def gather_job_links(driver, search_link):
     return links
 
 
-def gather_data_from_links(driver, links= None):
+def gather_data_from_links(driver, links=None):
     """
     This function goes over all links to job posts and creates a data frame out of the data pulled from each page
     :param driver: webdriver object
@@ -87,8 +88,9 @@ def gather_data_from_links(driver, links= None):
         except NoSuchElementException:
             pass
         try:
-            glassdoor_jobs.loc[i, 'desc'] = driver.find_element_by_class_name('desc.css-58vpdc.ecgq1xb3').text.replace('\n',
-                                                                                                                   ' ')
+            glassdoor_jobs.loc[i, 'desc'] = \
+                driver.find_element_by_class_name('desc.css-58vpdc.ecgq1xb3').text.replace('\n',  ' ')
+
         except NoSuchElementException:
             pass
 
@@ -125,7 +127,6 @@ def main():
         print('Add the correct path to the ChromeDriver in your machine')
         return
 
-
     job_links = []
     for search_links in INITIAL_LINKS:
         job_links.append(gather_job_links(driver, search_links))
@@ -135,4 +136,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
