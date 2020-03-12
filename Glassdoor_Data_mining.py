@@ -6,17 +6,17 @@ import pandas as pd
 import sys
 import os
 """"
-In this program, we scrape Glassdoor site for job offers, using selenium.
-We create a data frame of positions with info of the role and company
+In this program, we scrape Glassdoor site for job offers, using selenium and create a data frame with jobs data.
+
+First each search link is loaded, then we gather all job posts links from the searches. 
+After we have all job posts links, on each link we gather the data available.
+Finally we create a data frame of positions with info of the role and company.
 """
 PATH_OF_CHROME_DRIVER = 'chromedriver_linux64/chromedriver'
-INITIAL_LINKS = [
-    "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=data%20scientist&locT=N&locId=119&locKeyword=Israel&jobType=all&fromAge=3&minSalary=0&includeNoSalaryJobs=true&radius=25&cityId=-1&minRating=0.0&industryId=-1&sgocId=-1&seniorityType=all&companyId=-1&employerSizes=0&applicationType=0&remoteWorkType=0",
-    "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=data%20scientist&locT=N&locId=1&locKeyword=United%20States&jobType=all&fromAge=3&minSalary=11000&includeNoSalaryJobs=true&radius=25&cityId=-1&minRating=0.0&industryId=1020&sgocId=-1&seniorityType=all&companyId=-1&employerSizes=0&applicationType=0&remoteWorkType=0",
-    "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=data%20scientist&locT=N&locId=1&locKeyword=United%20States&jobType=all&fromAge=3&minSalary=11000&includeNoSalaryJobs=true&radius=25&cityId=-1&minRating=0.0&industryId=1059&sgocId=-1&seniorityType=all&companyId=-1&employerSizes=0&applicationType=0&remoteWorkType=0",
-    "https://www.glassdoor.com/Job/jobs.htm?sc.keyword=data%20scientist&locT=N&locId=1&locKeyword=United%20States&jobType=all&fromAge=3&minSalary=11000&includeNoSalaryJobs=true&radius=25&cityId=-1&minRating=0.0&industryId=1047&sgocId=-1&seniorityType=all&companyId=-1&employerSizes=0&applicationType=0&remoteWorkType=0",
-
-    ]
+JOBS_IN_ISRAEL = 'https://www.glassdoor.com/Job/israel-jobs-SRCH_IL.0,6_IN119.htm'
+DATA_SCIENTISTS_NEW_YORK = 'https://www.glassdoor.com/Job/new-york-data-science-jobs-SRCH_IL.0,8_IC1132348_KO9,21.htm'
+INITIAL_LINKS = [JOBS_IN_ISRAEL, DATA_SCIENTISTS_NEW_YORK]
+START_OF_LOCATION = 3
 
 
 def set_up_connection():
@@ -51,6 +51,7 @@ def gather_job_links(driver, search_link):
             driver.find_element_by_id("prefix__icon-close-1").click()
         except NoSuchElementException:
             pass
+        print(links)
     print(f'{len(links)} links were gathered')
     return links
 
@@ -74,9 +75,9 @@ def gather_data_from_links(driver, links=None):
         except NoSuchElementException:
             pass
         try:
-            glassdoor_jobs.loc[i, 'title'] = driver.find_element_by_class_name(
-                'mt-0.margBotXs.strong').text
+            glassdoor_jobs.loc[i, 'title'] = driver.find_element_by_class_name('mt-0.margBotXs.strong').text
         except NoSuchElementException:  # if page is rejected by glassdoor, reload.
+            time.sleep(random.randint(6, 8))
             driver.get(link)
             time.sleep(random.randint(2, 4))
             glassdoor_jobs.loc[i, 'title'] = driver.find_element_by_class_name('mt-0.margBotXs.strong').text
@@ -84,12 +85,12 @@ def gather_data_from_links(driver, links=None):
         glassdoor_jobs.loc[i, 'company'] = driver.find_element_by_class_name('strong.ib').text
 
         try:
-            glassdoor_jobs.loc[i, 'location'] = driver.find_element_by_class_name('subtle.ib').text[3:]
+            glassdoor_jobs.loc[i, 'location'] = driver.find_element_by_class_name('subtle.ib').text[START_OF_LOCATION:]
         except NoSuchElementException:
             pass
         try:
-            glassdoor_jobs.loc[i, 'desc'] = \
-                driver.find_element_by_class_name('desc.css-58vpdc.ecgq1xb3').text.replace('\n',  ' ')
+            glassdoor_jobs.loc[i, 'desc'] = driver.find_element_by_class_name('desc.css-58vpdc.ecgq1xb3').text.replace(
+                '\n', ' ')
 
         except NoSuchElementException:
             pass
@@ -101,10 +102,7 @@ def gather_data_from_links(driver, links=None):
             values = driver.find_elements_by_class_name("value")
             for field in zip(fields, values):
                 field_name = field[0].text
-                if field_name == 'Competitors':
-                    field_value = ','.join(field[1].text.split(','))
-                else:
-                    field_value = field[1].text
+                field_value = field[1].text
                 glassdoor_jobs.loc[i, field_name] = field_value
         except NoSuchElementException:
             pass
@@ -128,8 +126,8 @@ def main():
         return
 
     job_links = []
-    for search_links in INITIAL_LINKS:
-        job_links.append(gather_job_links(driver, search_links))
+    for search_link in INITIAL_LINKS:
+        job_links.extend(gather_job_links(driver, search_link))
     glassdoor_jobs = gather_data_from_links(driver, job_links)
     glassdoor_jobs.to_excel("glassdoor_jobs_df1.xlsx")
 
