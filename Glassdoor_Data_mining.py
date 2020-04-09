@@ -243,7 +243,7 @@ class JobPost:
     def get_rating(self):
         """
         This method navigates to rating tab and gets the rating of the company
-        :return: the rating of the companylimit limit_links
+        :return: the rating of the company
         """
         try:
             self._driver.find_element_by_xpath("//span[@class='link' and text()='Rating']").click()
@@ -257,13 +257,10 @@ class JobPost:
         return rating
 
 
-# 'searches to gather job posts IL - Israel, DSUS - DATA_SCIENTISTS_USA, UK -united Kingdom'
-
-
 @click.command()
 @click.option('--limit_search_pages', type=click.IntRange(1, 30), default=None,
               help='limit the number of pages in the search to gather job posts from 1-30')
-@click.option('--limit_job_posts', default=None, type=click.IntRange(1,1000),
+@click.option('--limit_job_posts', default=None, type=click.IntRange(1, 1000),
               help='limit the number of job posts to gather data from 1-1000')
 @click.option('--IL', 'search_option', flag_value=0, help='searches to gather job posts IL - Israel')
 @click.option('--DSUS', 'search_option', flag_value=1, help='searches to gather job posts DSUS - DATA_SCIENTISTS_USA')
