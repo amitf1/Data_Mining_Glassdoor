@@ -127,7 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-#
+
+#jetbrains
 .idea/
 .idea
+
+#selenium
 chromedriver_linux64/
+
+# excel
+.xlsx
+.xlsx#
