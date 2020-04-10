@@ -10,7 +10,11 @@ DATA_SCIENTISTS_USA = 'https://www.glassdoor.com/Job/us-data-scientist-jobs-SRCH
 INITIAL_LINKS = [JOBS_IN_ISRAEL, DATA_SCIENTISTS_USA, JOBS_IN_UK]
 START_OF_LOCATION = 3
 RELOAD_TRIALS = 3
-
+API_URL = "https://devru-latitude-longitude-find-v1.p.rapidapi.com/latlon.php"
+HEADERS = {
+    'x-rapidapi-host': "devru-latitude-longitude-find-v1.p.rapidapi.com",
+    'x-rapidapi-key': "151ca9c654msh1d0ca7a14cd32c0p1563b4jsnbdbf9c04a2ea"
+    }
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler(f'GDScraper_{datetime.now()}.log')
@@ -19,3 +23,5 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(logging.StreamHandler(sys.stdout))
+
+
