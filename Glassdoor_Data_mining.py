@@ -80,8 +80,10 @@ class GDScraper:
                     time.sleep(random.randint(2, 4))
                 except NoSuchElementException:
                     CFG.logger.warning("Next page couldn't be clicked, last page assumed")
+                    break
                 except TimeoutException:
                     CFG.logger.warning("Next page couldn't be clicked, last page assumed")
+                    break
                 self._close_popup()
         CFG.logger.info(f'Total of {len(links)} links were gathered')
         self.job_links = links
