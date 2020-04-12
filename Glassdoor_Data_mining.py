@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -78,6 +79,8 @@ class GDScraper:
                                                                                       "//li[@class='next']/a"))).click()
                     time.sleep(random.randint(2, 4))
                 except NoSuchElementException:
+                    CFG.logger.warning("Next page couldn't be clicked, last page assumed")
+                except TimeoutException:
                     CFG.logger.warning("Next page couldn't be clicked, last page assumed")
                 self._close_popup()
         CFG.logger.info(f'Total of {len(links)} links were gathered')
@@ -221,7 +224,6 @@ class GDScraper:
             row = df_jobs.loc[i, :].tolist()
             row[0] = int(row[0])
             row = tuple(row)
-            print(row)
             my_cursor.execute("""INSERT IGNORE INTO job_reqs (
                                  job_id, title, company, description, scrape_date, location, country, city)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
