@@ -19,7 +19,7 @@ GEO_AGENT = "myGeocoder"
 HOST = "localhost"
 USER = "root"
 PASSWORD = "password"
-DB = "glassdoor_db2"
+DB = "glassdoor_db"
 COMMIT_ITER = 1000
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
