@@ -12,7 +12,9 @@ import config as CFG
 from collections import defaultdict
 import click
 import requests
-
+import numpy as np
+from geopy import Nominatim
+import mysql.connector
 
 """"
 In this program, we scrape Glassdoor site for job offers, using selenium and create a data frame with jobs data.
@@ -43,6 +45,7 @@ class GDScraper:
         self._driver = webdriver.Chrome(executable_path=path)
         self.search_links = search_links
         self.job_links = []
+        self.df = pd.DataFrame()
 
     def _close_popup(self):
         """This function closes pop-ups in search links, in they appear"""
@@ -111,7 +114,119 @@ class GDScraper:
             glassdoor_jobs.loc[i, 'Company_Rating'] = job_post.get_rating()
         glassdoor_jobs['Country'] = glassdoor_jobs['Location'].apply(find_country)
         glassdoor_jobs['HQ Country'] = glassdoor_jobs['Headquarters'].apply(find_country)
+        glassdoor_jobs['Company_Rating'].fillna(-99, inplace=True)
+        glassdoor_jobs.fillna("None", inplace=True)  # for mysql usage
+        self.df = glassdoor_jobs
         return glassdoor_jobs
+
+    @staticmethod
+    def long_lat_dict(dataframe):
+        """
+        Receives a dataframe and returns a dictionary with the unique latitude/longitude for each location
+        :param dataframe: Glassdoor jobs data frame with locations and countries
+        """
+
+        locator = Nominatim(user_agent=CFG.GEO_AGENT)
+        unique_locations = set(pd.concat([dataframe['Location'], dataframe['Country']]))
+        coords_dict = {}
+        for loc in unique_locations:
+            if loc == np.nan or loc == 'None':
+                coords_dict[loc] = ('', '')
+            location = locator.geocode(loc, timeout=10)
+            coords_dict[loc] = (location.longitude, location.latitude)
+
+        return coords_dict
+
+    @staticmethod
+    def add_lon_lat(row, coords_dict):
+        """For each row, adds its longitude and latitude
+        :param row: row of Glassdoor data frame, Location and Country columns are mandatory
+        :param coords_dict: dictionary of all locations in the object df and their coordinates
+        :return: coordinates of the location in the row
+        """
+        if row['Location'] in coords_dict:
+            longitude, latitude = coords_dict[row['Location']]
+            return longitude, latitude
+        else:
+            longitude, latitude = coords_dict[row['Country']]
+            return longitude, latitude
+
+    def location_to_mysql(self, mydb):
+        """This method enriches the data with coordinates, and inserts it to location table in mysql db
+         :param mydb: mysql db connection
+         """
+        glassdoor_jobs = self.df
+        my_cursor = mydb.cursor()
+        df_location = pd.DataFrame()
+        df_location['Location'] = pd.concat([glassdoor_jobs['Location'], glassdoor_jobs['Headquarters']])
+        df_location['Country'] = pd.concat([glassdoor_jobs['Country'], glassdoor_jobs['HQ Country']])
+        df_location.reset_index(drop=True, inplace=True)
+        df_location['City'] = df_location.apply(lambda x: x['Location'].split(',')[0], axis=1)
+        coords_dict = self.long_lat_dict(df_location)
+        df_location['Longitude'], df_location['Latitude'] = df_location.apply(lambda x: self.add_lon_lat(x, coords_dict)
+                                                                              , axis=1).str
+        for i in range(len(df_location)):
+            row = tuple(df_location.loc[i, :].tolist())
+            my_cursor.execute("""INSERT IGNORE INTO locations (
+                                 location, country, city, longitude, latitude)
+                                VALUES (%s, %s, %s, %s, %s)""", row)
+            if i % CFG.COMMIT_ITER == 0:
+                mydb.commit()
+        mydb.commit()
+
+    def company_to_mysql(self, mydb):
+        """
+        This method inserts company data to company table in mysql db
+        :param mydb: mysql db connection
+        """
+        glassdoor_jobs = self.df
+        df_company = pd.DataFrame()
+        df_company['Company_name'] = glassdoor_jobs['Company']
+        df_company['Country'] = glassdoor_jobs['HQ Country']
+        df_company['City'] = glassdoor_jobs.apply(lambda x: x['Headquarters'].split(',')[0], axis=1)
+        df_company['Size'] = glassdoor_jobs['Size']
+        df_company['Founded'] = glassdoor_jobs['Founded']
+        df_company['Type'] = glassdoor_jobs['Type']
+        df_company['Industry'] = glassdoor_jobs['Industry']
+        df_company['Sector'] = glassdoor_jobs['Sector']
+        df_company['Revenue'] = glassdoor_jobs['Revenue']
+        df_company['Rating'] = glassdoor_jobs['Company_Rating']
+        my_cursor = mydb.cursor()
+        for i in range(len(df_company)):
+            row = tuple(df_company.loc[i, :].tolist())
+            my_cursor.execute("""INSERT IGNORE INTO companies (
+                                 company_name, country, city, size, founded, type, industry, sector, revenue, rating)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", row)
+            if i % CFG.COMMIT_ITER == 0:
+                mydb.commit()
+        mydb.commit()
+
+    def jobs_to_mysql(self, mydb):
+        """
+        This method inserts jobs data to jobs table in mysql db
+        :param mydb: mysql db connection
+        """
+        df_jobs = pd.DataFrame()
+        glassdoor_jobs = self.df
+        df_jobs['JobId'] = glassdoor_jobs['Job_ID']
+        df_jobs['Title'] = glassdoor_jobs['Title']
+        df_jobs['Company'] = glassdoor_jobs['Company']
+        df_jobs['Description'] = glassdoor_jobs['Desc']
+        df_jobs['Scrape_Date'] = pd.to_datetime(glassdoor_jobs['Scrape_Date'])
+        df_jobs['Location'] = glassdoor_jobs['Location']
+        df_jobs['Country'] = glassdoor_jobs['Country']
+        df_jobs['City'] = glassdoor_jobs.apply(lambda x: x['Location'].split(',')[0], axis=1)
+        my_cursor = mydb.cursor()
+        for i in range(len(df_jobs)):
+            row = df_jobs.loc[i, :].tolist()
+            row[0] = int(row[0])
+            row = tuple(row)
+            my_cursor.execute("""INSERT IGNORE INTO job_reqs (
+                                 job_id, title, company, description, scrape_date, location, country, city)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
+            if i % CFG.COMMIT_ITER == 0:
+                mydb.commit()
+        mydb.commit()
 
 
 class JobPost:
@@ -313,6 +428,10 @@ def scrape_glassdoor(limit_search_pages, limit_job_posts, search_option):
     gd_scraper.gather_job_links(limit_search_pages)
     glassdoor_jobs = gd_scraper.gather_data_from_links(limit_job_posts)
     glassdoor_jobs.to_csv(f"glassdoor_jobs{datetime.now()}.csv")
+    mydb = mysql.connector.connect(host=CFG.HOST, user=CFG.USER, passwd=CFG.PASSWORD, database=CFG.DB)
+    gd_scraper.location_to_mysql(mydb)
+    gd_scraper.company_to_mysql(mydb)
+    gd_scraper.jobs_to_mysql(mydb)
 
 
 def main():

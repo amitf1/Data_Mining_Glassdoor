@@ -15,6 +15,12 @@ HEADERS = {
     'x-rapidapi-host': "devru-latitude-longitude-find-v1.p.rapidapi.com",
     'x-rapidapi-key': "151ca9c654msh1d0ca7a14cd32c0p1563b4jsnbdbf9c04a2ea"
     }
+GEO_AGENT = "myGeocoder"
+HOST = "localhost"
+USER = "root"
+PASSWORD = "password"
+DB = "glassdoor_db"
+COMMIT_ITER = 1000
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler(f'GDScraper_{datetime.now()}.log')
