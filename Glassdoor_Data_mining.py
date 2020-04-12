@@ -170,6 +170,7 @@ class GDScraper:
         coords_dict = self.long_lat_dict(df_location)
         df_location['Longitude'], df_location['Latitude'] = df_location.apply(lambda x: self.add_lon_lat(
             x, coords_dict), axis=1).str
+        CFG.logger.info('insert into location table started')
         for i in range(len(df_location)):
             row = tuple(df_location.loc[i, :].tolist())
             my_cursor.execute("""INSERT IGNORE INTO locations (
@@ -177,7 +178,9 @@ class GDScraper:
                                 VALUES (%s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
+                CFG.logger.info('committed')
         mydb.commit()
+        CFG.logger.info('committed')
 
     def company_to_mysql(self, mydb):
         """
@@ -197,6 +200,7 @@ class GDScraper:
         df_company['Revenue'] = glassdoor_jobs['Revenue']
         df_company['Rating'] = glassdoor_jobs['Company_Rating']
         my_cursor = mydb.cursor()
+        CFG.logger.info('insert into company table started')
         for i in range(len(df_company)):
             row = tuple(df_company.loc[i, :].tolist())
             my_cursor.execute("""INSERT IGNORE INTO companies (
@@ -204,7 +208,9 @@ class GDScraper:
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
+                CFG.logger.info('committed')
         mydb.commit()
+        CFG.logger.info('committed')
 
     def jobs_to_mysql(self, mydb):
         """
@@ -222,6 +228,7 @@ class GDScraper:
         df_jobs['Country'] = glassdoor_jobs['Country']
         df_jobs['City'] = glassdoor_jobs.apply(lambda x: x['Location'].split(',')[0], axis=1)
         my_cursor = mydb.cursor()
+        CFG.logger.info('insert into jobs table started')
         for i in range(len(df_jobs)):
             row = df_jobs.loc[i, :].tolist()
             row[0] = int(row[0])
@@ -231,7 +238,9 @@ class GDScraper:
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
+                CFG.logger.info('committed')
         mydb.commit()
+        CFG.logger.info('committed')
 
 
 class JobPost:
