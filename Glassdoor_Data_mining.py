@@ -163,8 +163,8 @@ class GDScraper:
         df_location.reset_index(drop=True, inplace=True)
         df_location['City'] = df_location.apply(lambda x: x['Location'].split(',')[0], axis=1)
         coords_dict = self.long_lat_dict(df_location)
-        df_location['Longitude'], df_location['Latitude'] = df_location.apply(lambda x: self.add_lon_lat(x, coords_dict)
-                                                                              , axis=1).str
+        df_location['Longitude'], df_location['Latitude'] = df_location.apply(lambda x: self.add_lon_lat(
+            x, coords_dict), axis=1).str
         for i in range(len(df_location)):
             row = tuple(df_location.loc[i, :].tolist())
             my_cursor.execute("""INSERT IGNORE INTO locations (
@@ -221,6 +221,7 @@ class GDScraper:
             row = df_jobs.loc[i, :].tolist()
             row[0] = int(row[0])
             row = tuple(row)
+            print(row)
             my_cursor.execute("""INSERT IGNORE INTO job_reqs (
                                  job_id, title, company, description, scrape_date, location, country, city)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)

@@ -1,28 +1,29 @@
 import mysql.connector
+import config as CFG
 
 
-def main():
+def create_db():
     """Creating the glassdoor database and tables"""
 
     # Creating the Glassdoor database
     mydb = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        passwd="password")
+        host=CFG.HOST,
+        user=CFG.USER,
+        passwd=CFG.PASSWORD)
 
     # creating a cursor
     my_cursor = mydb.cursor()
 
-    my_cursor.execute("CREATE DATABASE glassdoor_db")
+    my_cursor.execute(f"CREATE DATABASE {CFG.DB}")
 
     # Connecting to our created database and creating the tables
 
     # Connecting to the database -
     mydb = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        passwd="password",
-        database="glassdoor_db")
+        host=CFG.HOST,
+        user=CFG.USER,
+        passwd=CFG.PASSWORD,
+        database=CFG.DB)
 
     # creating a cursor
     my_cursor = mydb.cursor()
@@ -71,6 +72,10 @@ def main():
                       PRIMARY KEY(job_id)
   )
   """)
+
+
+def main():
+    create_db()
 
 
 if __name__ == "__main__":

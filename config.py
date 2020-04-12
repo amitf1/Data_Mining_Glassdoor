@@ -18,8 +18,8 @@ HEADERS = {
 GEO_AGENT = "myGeocoder"
 HOST = "localhost"
 USER = "root"
-PASSWORD = "password"
-DB = "glassdoor_db"
+PASSWORD = "feldmit77"
+DB = "glassdoor_db2"
 COMMIT_ITER = 1000
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
