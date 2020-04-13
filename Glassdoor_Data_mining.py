@@ -137,8 +137,12 @@ class GDScraper:
         for loc in unique_locations:
             if loc == np.nan or loc == 'None':
                 coords_dict[loc] = ('', '')
-            location = locator.geocode(loc, timeout=10)
-            coords_dict[loc] = (location.longitude, location.latitude)
+            else:
+                location = locator.geocode(loc, timeout=10)
+                if location is not None:
+                    coords_dict[loc] = (location.longitude, location.latitude)
+
+
 
         return coords_dict
 
