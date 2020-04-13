@@ -141,9 +141,6 @@ class GDScraper:
                 location = locator.geocode(loc, timeout=10)
                 if location is not None:
                     coords_dict[loc] = (location.longitude, location.latitude)
-
-
-
         return coords_dict
 
     @staticmethod
