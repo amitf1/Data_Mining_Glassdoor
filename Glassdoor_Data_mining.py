@@ -512,12 +512,14 @@ def scrape_glassdoor(limit_search_pages, limit_job_posts, search_option):
     gd_scraper.location_to_mysql(mydb)
     gd_scraper.company_to_mysql(mydb)
     gd_scraper.jobs_to_mysql(mydb)
+    return
 
 
 def main():
     CFG.logger.info(f'Started at {datetime.now()}')
     scrape_glassdoor()
     CFG.logger.info(f'Ended at {datetime.now()}')
+    return
 
 
 if __name__ == '__main__':
