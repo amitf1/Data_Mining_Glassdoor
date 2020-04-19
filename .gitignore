@@ -129,12 +129,17 @@ dmypy.json
 .pyre/
 
 #jetbrains
-.idea/
-.idea
+*.idea/
+*.idea
 
 #selenium
 chromedriver_linux64/
 
 # excel
-.xlsx
-.xlsx#
+*.xlsx
+*.xlsx#
+*.csv
+
+#jupyter
+*.ipynb
+

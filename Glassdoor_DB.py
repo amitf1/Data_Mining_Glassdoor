@@ -30,11 +30,14 @@ def create_db():
 
     # Creating the locations table
     my_cursor.execute("""CREATE TABLE locations (
-                      location VARCHAR(100),
-                      country VARCHAR(100),
-                      city VARCHAR(100),
-                      longitude FLOAT,
+                      location VARCHAR(100) CHARACTER SET UTF8,
+                      country VARCHAR(100) CHARACTER SET UTF8,
+                      city VARCHAR(100) CHARACTER SET UTF8,
+                      longitude FLOAT ,
                       latitude FLOAT,
+                      region VARCHAR(100) CHARACTER SET UTF8,
+                      population INT,
+                      capital VARCHAR(100) CHARACTER SET UTF8,
                       PRIMARY KEY(country, city)
 
   )
@@ -42,16 +45,16 @@ def create_db():
 
     # Creating the companies table
     my_cursor.execute("""CREATE TABLE companies (
-                      company_name VARCHAR(100),
-                      country VARCHAR(100),
-                      city VARCHAR(100),
+                      company_name VARCHAR(100) CHARACTER SET UTF8,
+                      country VARCHAR(100) CHARACTER SET UTF8,
+                      city VARCHAR(100) CHARACTER SET UTF8,
                       FOREIGN KEY(country, city) REFERENCES locations(country, city),
-                      size VARCHAR(100),
+                      size VARCHAR(100) CHARACTER SET UTF8,
                       founded INTEGER,
-                      type VARCHAR(100),
-                      industry VARCHAR(100),
-                      sector VARCHAR(100),
-                      revenue VARCHAR(100),
+                      type VARCHAR(100) CHARACTER SET UTF8,
+                      industry VARCHAR(100) CHARACTER SET UTF8,
+                      sector VARCHAR(100) CHARACTER SET UTF8,
+                      revenue VARCHAR(100) CHARACTER SET UTF8,
                       rating FLOAT,
                       PRIMARY KEY(company_name)
   )
@@ -60,14 +63,14 @@ def create_db():
     # Creating the jobs_reqs table
     my_cursor.execute("""CREATE TABLE job_reqs (
                       job_id BIGINT,
-                      title VARCHAR(100),
-                      description TEXT,
-                      company VARCHAR(100),
+                      title VARCHAR(100) CHARACTER SET UTF8,
+                      description TEXT CHARACTER SET UTF8,
+                      company VARCHAR(100) CHARACTER SET UTF8,
                       FOREIGN KEY(company) REFERENCES companies(company_name),
                       scrape_date DATETIME,
-                      location VARCHAR(100),
-                      country VARCHAR(100),
-                      city VARCHAR(100),
+                      location VARCHAR(100) CHARACTER SET UTF8,
+                      country VARCHAR(100) CHARACTER SET UTF8,
+                      city VARCHAR(100) CHARACTER SET UTF8,
                       FOREIGN KEY(country, city) REFERENCES locations(country, city),
                       PRIMARY KEY(job_id)
   )

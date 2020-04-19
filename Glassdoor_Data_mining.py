@@ -15,6 +15,7 @@ import click
 import requests
 import numpy as np
 from geopy import Nominatim
+from geopy.exc import GeocoderUnavailable
 import mysql.connector
 
 """"
@@ -43,6 +44,7 @@ class GDScraper:
         if not os.path.exists(path):
             raise FileNotFoundError("'ChromeDriver' executable needs to be in path."
                                     "Please see https://sites.google.com/a/chromium.org/chromedriver/home")
+
         self._driver = webdriver.Chrome(executable_path=path)
         self.search_links = search_links
         self.job_links = []
@@ -55,13 +57,15 @@ class GDScraper:
         except NoSuchElementException:
             CFG.logger.info("No pop-up")
 
-    def gather_job_links(self, limit_page_per_search=None):
+    def gather_job_links(self, limit_page_per_search=CFG.MAX_SEARCH_PAGES):
         """
         This function go over the instance's search links, for each search
          gathers all the links of job posts and returns them
         :limit_page_per_search: limit of pages to search per search link
         :return: list of links of all job posts
         """
+        if limit_page_per_search is None:
+            limit_page_per_search = CFG.MAX_SEARCH_PAGES
         links = []
         for search_link in self.search_links:
             self._driver.get(search_link)
@@ -72,7 +76,7 @@ class GDScraper:
                     links.append(job.find_element_by_css_selector('a').get_attribute('href'))
                 i += 1
                 print(f'Page {i} of {search_link} is done')
-                if limit_page_per_search is not None and i == limit_page_per_search:
+                if i == limit_page_per_search:
                     break
                 try:
                     WebDriverWait(self._driver, 20).until(EC.element_to_be_clickable((By.XPATH,
@@ -117,11 +121,24 @@ class GDScraper:
             for col, val in job_post.get_company_tab().items():
                 glassdoor_jobs.loc[i, col] = val
             glassdoor_jobs.loc[i, 'Company_Rating'] = job_post.get_rating()
+            if glassdoor_jobs.loc[i, 'Location'] == 'Central' or glassdoor_jobs.loc[i, 'Location'] == 'Southern':
+                glassdoor_jobs.loc[i, 'Location'] = glassdoor_jobs.loc[i, 'Headquarters']
+        self.df = glassdoor_jobs
+        glassdoor_jobs = self._enrich_df()
+        self.df = glassdoor_jobs
+        return glassdoor_jobs
+
+    def _enrich_df(self):
+        """
+        This method deals with the object df, adding Country, HQ Country and replace missing values
+        :return: df with added info and fixed missing values to be accepted by mysql
+        """
+        glassdoor_jobs = self.df
         glassdoor_jobs['Country'] = glassdoor_jobs['Location'].apply(find_country)
         glassdoor_jobs['HQ Country'] = glassdoor_jobs['Headquarters'].apply(find_country)
+
         glassdoor_jobs['Company_Rating'].fillna(-99, inplace=True)
         glassdoor_jobs.fillna("None", inplace=True)  # for mysql usage
-        self.df = glassdoor_jobs
         return glassdoor_jobs
 
     @staticmethod
@@ -138,7 +155,11 @@ class GDScraper:
             if loc == np.nan or loc == 'None':
                 coords_dict[loc] = ('', '')
             else:
-                location = locator.geocode(loc, timeout=10)
+                try:
+                    location = locator.geocode(loc, timeout=20)
+                except GeocoderUnavailable:
+                    CFG.logger.warning(f'No response from Geocoder')
+                    location = None
                 if location is not None:
                     coords_dict[loc] = (location.longitude, location.latitude)
         return coords_dict
@@ -157,12 +178,33 @@ class GDScraper:
             longitude, latitude = coords_dict[row['Country']]
             return longitude, latitude
 
-    def location_to_mysql(self, mydb):
-        """This method enriches the data with coordinates, and inserts it to location table in mysql db
-         :param mydb: mysql db connection
+    @staticmethod
+    def get_extra_country_info(country):
+        """
+        This method takes a country name and using restcountries api return countries population, capital city and
+        region
+        :param country: country name
+        :return: A dictionary with population of the given country, capital of the given country
+        and the region of the given country
+        """
+        response = requests.get(CFG.REST_COUNTRIES_A + country + CFG.REST_COUNTRIES_B)
+        country_info = response.json()
+        if isinstance(country_info, dict):
+            population = None
+            capital = None
+            region = None
+        else:
+            population = country_info[0]['population']
+            capital = country_info[0]['capital']
+            region = country_info[0]['region']
+        return {'Population': population, 'Capital': capital, 'Region': region}
+
+    def _enrich_location(self):
+        """This method enriches the data with coordinates, and country information and inserts it to location table in
+        mysql db
+        :return: df of the location with new country information
          """
         glassdoor_jobs = self.df
-        my_cursor = mydb.cursor()
         df_location = pd.DataFrame()
         df_location['Location'] = pd.concat([glassdoor_jobs['Location'], glassdoor_jobs['Headquarters']])
         df_location['Country'] = pd.concat([glassdoor_jobs['Country'], glassdoor_jobs['HQ Country']])
@@ -171,12 +213,27 @@ class GDScraper:
         coords_dict = self.long_lat_dict(df_location)
         df_location['Longitude'], df_location['Latitude'] = df_location.apply(lambda x: self.add_lon_lat(
             x, coords_dict), axis=1).str
+        df_location['Region'] = df_location['Country'].apply(lambda x:
+                                                             self.get_extra_country_info(x)['Region'])
+        df_location['Population'] = df_location['Country'].apply(lambda x:
+                                                                 self.get_extra_country_info(x)['Population'])
+        df_location['Capital'] = df_location['Country'].apply(lambda x:
+                                                              self.get_extra_country_info(x)['Capital'])
+        return df_location
+
+    def location_to_mysql(self, mydb):
+        """This method enriches the data with coordinates, and inserts it to location table in mysql db
+         :param mydb: mysql db connection
+         """
+        my_cursor = mydb.cursor()
+        df_location = self._enrich_location()
+        df_location.fillna('None', inplace=True)
         CFG.logger.info('insert into location table started')
         for i in range(len(df_location)):
             row = tuple(df_location.loc[i, :].tolist())
             my_cursor.execute("""INSERT IGNORE INTO locations (
-                                 location, country, city, longitude, latitude)
-                                VALUES (%s, %s, %s, %s, %s)""", row)
+                                 location, country, city, longitude, latitude, region, population, capital)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
                 CFG.logger.info('committed')
@@ -286,7 +343,8 @@ class JobPost:
         i = 0
         while not collected and i < CFG.RELOAD_TRIALS:
             try:
-                title = self._driver.find_element_by_class_name('mt-0.mb-xsm.strong').text
+                # title = self._driver.find_element_by_class_name('mt-0.mb-xsm.strong').text
+                title = self._driver.find_element_by_class_name('css-17x2pwl.e11nt52q5').text
                 collected = True
             except NoSuchElementException:
                 CFG.logger.warning(f'Title not collected on {i} trial')
@@ -323,8 +381,12 @@ class JobPost:
         :return: hiring company
         """
         try:
-            company = self._driver.find_element_by_class_name('strong.ib').text
+            # company = self._driver.find_element_by_class_name('strong.ib').text # css-16nw49e e11nt52q1
+            company = self._driver.find_element_by_class_name('css-16nw49e.e11nt52q1').text.split()[0]
         except NoSuchElementException:
+            company = None
+            CFG.logger.warning("Company was not collected")
+        except IndexError:
             company = None
             CFG.logger.warning("Company was not collected")
         return company
@@ -335,7 +397,8 @@ class JobPost:
         :return: job location
         """
         try:
-            location = self._driver.find_element_by_class_name('subtle.ib').text[CFG.START_OF_LOCATION:]
+            # location = self._driver.find_element_by_class_name('subtle.ib').text[CFG.START_OF_LOCATION:] #
+            location = self._driver.find_element_by_class_name('css-13et3b1.e11nt52q2').text  # [CFG.START_OF_LOCATION:]
         except NoSuchElementException:
             location = None
             CFG.logger.warning("Location was not collected")
@@ -394,11 +457,13 @@ class JobPost:
 def find_country(location):
     """
     This function finds the country of the location using an API
-    :param location: the location to find it's countery
+    :param location: the location to find it's country
     :return: The country of the given location if found, None otherwise
     """
     response = requests.request("GET", CFG.API_URL, headers=CFG.HEADERS, params={'location': location})
-    if len(eval(response.text)['Results']) == 0 and len(location) > 2:
+    if len(eval(response.text)['Results']) != 0 and eval(response.text)['Results'][0]['c'] == 'US':
+        country = 'USA'
+    elif len(eval(response.text)['Results']) == 0 and len(location) > 2:
         response = requests.request("GET", CFG.API_URL, headers=CFG.HEADERS, params={'location': location[:-2]})
         if len(eval(response.text)['Results']) == 0:
             if len(location.split(',')) > 1:
@@ -412,13 +477,13 @@ def find_country(location):
     else:
         # country = eval(response.text)['Results'][0]['c']
         country = eval(response.text)['Results'][0]['name'].split(',')[-1].strip()
-    print(country)
+    CFG.logger.debug(country)
     return country
 
 
 @click.command()
-@click.option('--limit_search_pages', type=click.IntRange(1, 30), default=None,
-              help='limit the number of pages in the search to gather job posts from 1-30')
+@click.option('--limit_search_pages', type=click.IntRange(1, CFG.MAX_SEARCH_PAGES), default=None,
+              help=f'limit the number of pages in the search to gather job posts from 1-{CFG.MAX_SEARCH_PAGES}')
 @click.option('--limit_job_posts', default=None, type=click.IntRange(1, 1000),
               help='limit the number of job posts to gather data from 1-1000')
 @click.option('--IL', 'search_option', flag_value=0, help='searches to gather job posts IL - Israel')

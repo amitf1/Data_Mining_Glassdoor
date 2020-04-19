@@ -1,6 +1,7 @@
 import logging
 import sys
 from datetime import datetime
+from selenium import webdriver
 
 PATH_OF_CHROME_DRIVER = 'chromedriver_linux64/chromedriver'
 JOBS_IN_ISRAEL = 'https://www.glassdoor.com/Job/israel-jobs-SRCH_IL.0,6_IN119.htm?fromAge=1&radius=25'
@@ -10,16 +11,19 @@ DATA_SCIENTISTS_USA = 'https://www.glassdoor.com/Job/us-data-scientist-jobs-SRCH
 INITIAL_LINKS = [JOBS_IN_ISRAEL, DATA_SCIENTISTS_USA, JOBS_IN_UK]
 START_OF_LOCATION = 3
 RELOAD_TRIALS = 3
+MAX_SEARCH_PAGES = 30
 API_URL = "https://devru-latitude-longitude-find-v1.p.rapidapi.com/latlon.php"
 HEADERS = {
     'x-rapidapi-host': "devru-latitude-longitude-find-v1.p.rapidapi.com",
     'x-rapidapi-key': "151ca9c654msh1d0ca7a14cd32c0p1563b4jsnbdbf9c04a2ea"
     }
 GEO_AGENT = "myGeocoder"
+REST_COUNTRIES_A = 'https://restcountries.eu/rest/v2/name/'
+REST_COUNTRIES_B = '?fullText=true'
 HOST = "localhost"
 USER = "root"
-PASSWORD = "password"
-DB = "glassdoor_db"
+PASSWORD = "feldmit"
+DB = "DBGlassdoor"
 COMMIT_ITER = 1000
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
@@ -29,5 +33,5 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-
-
+chrome_options = webdriver.ChromeOptions()
+chrome_options.add_argument("--incognito")
