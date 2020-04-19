@@ -239,6 +239,7 @@ class GDScraper:
                 CFG.logger.info('committed')
         mydb.commit()
         CFG.logger.info('committed')
+        return
 
     def company_to_mysql(self, mydb):
         """
@@ -269,6 +270,7 @@ class GDScraper:
                 CFG.logger.info('committed')
         mydb.commit()
         CFG.logger.info('committed')
+        return
 
     def jobs_to_mysql(self, mydb):
         """
@@ -299,6 +301,7 @@ class GDScraper:
                 CFG.logger.info('committed')
         mydb.commit()
         CFG.logger.info('committed')
+        return
 
 
 class JobPost:
