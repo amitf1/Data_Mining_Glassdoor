@@ -1,5 +1,6 @@
 import mysql.connector
 import config as CFG
+import pandas as pd
 
 
 def create_db():
@@ -74,6 +75,30 @@ def create_db():
                       PRIMARY KEY(job_id)
   )
   """)
+    my_cursor.execute("""CREATE TABLE skills (
+                     skill_id INT AUTO_INCREMENT,
+                     skill_name VARCHAR(100),
+                     PRIMARY KEY(skill_id)) """)
+
+    my_cursor.execute("""CREATE TABLE skills_in_job (
+                     job_id BIGINT,
+                     FOREIGN KEY(job_id) REFERENCES job_reqs(job_id),
+                     skill_id INT,
+                     FOREIGN KEY(skill_id) REFERENCES skills(skill_id),
+                     PRIMARY KEY(job_id, skill_id)) """)
+
+    bag_of_words = pd.read_csv('bag_of_words.csv')
+    bag_of_words = bag_of_words['Skill'].str.lower().values
+    df_skill_list = pd.Series(bag_of_words).reset_index().rename(columns={0: 'skill_name'})
+    for i in range(len(df_skill_list)):
+        row = df_skill_list.loc[i, :].tolist()
+        row[0] = int(row[0])
+        my_cursor.execute("""INSERT IGNORE INTO skills (
+                                  skill_id, skill_name)
+                                VALUES (%s, %s)""", row)
+        if i % 1000 == 0:
+            mydb.commit()
+    mydb.commit()
 
 
 def main():

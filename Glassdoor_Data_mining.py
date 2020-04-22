@@ -4,6 +4,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 import random
 import pandas as pd
@@ -324,6 +325,33 @@ class GDScraper:
         CFG.logger.info('committed')
         return
 
+    def skills_to_mysql(self, mydb):
+        """
+        This method gathers and inserts skills data to skills and skills in jobs db tables
+        :param mydb: mysql db connection
+
+        """
+        my_cursor = mydb.cursor()
+        glassdoor_jobs = self.df
+        df_skills = pd.DataFrame(columns=['Job_ID', 'Skill_ID'])
+        bag_of_words = pd.read_sql_query("""SELECT * FROM skills""", mydb).set_index('skill_name')
+        for index, row in glassdoor_jobs.iterrows():
+            words = combinations(row['Desc'])
+            for word in words:
+                if word in bag_of_words.index:
+                    skill_id = bag_of_words.loc[word]['skill_id']
+                    df_skills = df_skills.append({'Job_ID': row['Job_ID'],
+                                                  'Skill_ID': skill_id},
+                                                 ignore_index=True)
+        for i in range(len(df_skills)):
+            row = tuple(df_skills.loc[i, :].tolist())
+            my_cursor.execute("""INSERT IGNORE INTO skills_in_job  (
+                                  job_id, skill_id)
+                                VALUES (%s, %s)""", row)
+            if i % 1000 == 0:
+                mydb.commit()
+        mydb.commit()
+
 
 class JobPost:
     """
@@ -505,6 +533,18 @@ def find_country(location):
     return country
 
 
+def combinations(description):
+    """
+    Receives a text and returns combinations of words(up to two words together)
+    :param description: text to get word combinations from
+    :return: word combinations gathered from the text
+    """
+    vectorized = TfidfVectorizer(stop_words=['english', 'make'], ngram_range=(1, 2))
+    vectorized.fit_transform([description])
+    combos = vectorized.get_feature_names()
+    return combos
+
+
 @click.command()
 @click.option('--limit_search_pages', type=click.IntRange(1, CFG.MAX_SEARCH_PAGES), default=None,
               help=f'limit the number of pages in the search to gather job posts from 1-{CFG.MAX_SEARCH_PAGES}')
@@ -536,6 +576,7 @@ def scrape_glassdoor(limit_search_pages, limit_job_posts, search_option):
     gd_scraper.location_to_mysql(mydb)
     gd_scraper.company_to_mysql(mydb)
     gd_scraper.jobs_to_mysql(mydb)
+    gd_scraper.skills_to_mysql(mydb)
     return
 
 
