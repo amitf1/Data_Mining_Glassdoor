@@ -227,10 +227,13 @@ class GDScraper:
          """
         my_cursor = mydb.cursor()
         df_location = self._enrich_location()
+        df_location['Population'].fillna(-99, inplace=True)
         df_location.fillna('None', inplace=True)
         CFG.logger.info('insert into location table started')
         for i in range(len(df_location)):
-            row = tuple(df_location.loc[i, :].tolist())
+            row = df_location.loc[i, :].tolist()
+            row[-2] = int(row[-2])
+            row = tuple(row)
             my_cursor.execute("""INSERT IGNORE INTO locations (
                                  location, country, city, longitude, latitude, region, population, capital)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
@@ -247,10 +250,12 @@ class GDScraper:
         :param mydb: mysql db connection
         """
         glassdoor_jobs = self.df
+        my_cursor = mydb.cursor()
         df_company = pd.DataFrame()
         df_company['Company_name'] = glassdoor_jobs['Company']
-        df_company['Country'] = glassdoor_jobs['HQ Country']
-        df_company['City'] = glassdoor_jobs.apply(lambda x: x['Headquarters'].split(',')[0], axis=1)
+        df_company['country'] = glassdoor_jobs['HQ Country']
+        df_company['city'] = glassdoor_jobs.apply(lambda x: x['Headquarters'].split(',')[0], axis=1)
+
         df_company['Size'] = glassdoor_jobs['Size']
         df_company['Founded'] = glassdoor_jobs['Founded']
         df_company['Type'] = glassdoor_jobs['Type']
@@ -258,13 +263,21 @@ class GDScraper:
         df_company['Sector'] = glassdoor_jobs['Sector']
         df_company['Revenue'] = glassdoor_jobs['Revenue']
         df_company['Rating'] = glassdoor_jobs['Company_Rating']
-        my_cursor = mydb.cursor()
+
         CFG.logger.info('insert into company table started')
         for i in range(len(df_company)):
-            row = tuple(df_company.loc[i, :].tolist())
+            row = df_company.loc[i, :]
+            my_cursor.execute(f"""
+                    SELECT id FROM locations WHERE country="{row['country']}" and city="{row['city']}" limit 1 
+                    """)
+            row['location_id'] = my_cursor.fetchone()[0]
+            row = row[['Company_name', 'location_id', 'Size', 'Founded', 'Type', 'Industry', 'Sector', 'Revenue',
+                       'Rating']]
+
+            row = tuple(row.tolist())
             my_cursor.execute("""INSERT IGNORE INTO companies (
-                                 company_name, country, city, size, founded, type, industry, sector, revenue, rating)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", row)
+                                 company_name, location_id, size, founded, type, industry, sector, revenue, rating)
+                                VALUES (%s, %s, %s, %s,  %s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
                 CFG.logger.info('committed')
@@ -279,23 +292,31 @@ class GDScraper:
         """
         df_jobs = pd.DataFrame()
         glassdoor_jobs = self.df
-        df_jobs['JobId'] = glassdoor_jobs['Job_ID']
+        my_cursor = mydb.cursor()
+        df_jobs['Job_Id'] = glassdoor_jobs['Job_ID']
         df_jobs['Title'] = glassdoor_jobs['Title']
         df_jobs['Company'] = glassdoor_jobs['Company']
-        df_jobs['Description'] = glassdoor_jobs['Desc']
+        df_jobs['Desc'] = glassdoor_jobs['Desc']
         df_jobs['Scrape_Date'] = pd.to_datetime(glassdoor_jobs['Scrape_Date'])
-        df_jobs['Location'] = glassdoor_jobs['Location']
-        df_jobs['Country'] = glassdoor_jobs['Country']
-        df_jobs['City'] = glassdoor_jobs.apply(lambda x: x['Location'].split(',')[0], axis=1)
-        my_cursor = mydb.cursor()
+        df_jobs['country'] = glassdoor_jobs['HQ Country']
+        df_jobs['city'] = glassdoor_jobs.apply(lambda x: x['Headquarters'].split(',')[0], axis=1)
+
         CFG.logger.info('insert into jobs table started')
         for i in range(len(df_jobs)):
-            row = df_jobs.loc[i, :].tolist()
+            row = df_jobs.loc[i, :]
+            country = row['country']
+            city = row['city']
+            row.drop(['country', 'city'], inplace=True)
+            my_cursor.execute(f"""
+                               SELECT id FROM locations WHERE country="{country}" and city="{city}" limit 1 
+                               """)
+            row['location_id'] = my_cursor.fetchone()[0]
+            row = row.tolist()
             row[0] = int(row[0])
             row = tuple(row)
             my_cursor.execute("""INSERT IGNORE INTO job_reqs (
-                                 job_id, title, company, description, scrape_date, location, country, city)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", row)
+                                 job_id, title, company, description, scrape_date, location_id)
+                                VALUES (%s, %s, %s, %s, %s, %s)""", row)
             if i % CFG.COMMIT_ITER == 0:
                 mydb.commit()
                 CFG.logger.info('committed')

@@ -30,25 +30,26 @@ def create_db():
 
     # Creating the locations table
     my_cursor.execute("""CREATE TABLE locations (
+                      id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
                       location VARCHAR(100) CHARACTER SET UTF8,
-                      country VARCHAR(100) CHARACTER SET UTF8,
-                      city VARCHAR(100) CHARACTER SET UTF8,
+                      country VARCHAR(100) CHARACTER SET UTF8 NOT NULL,
+                      city VARCHAR(100) CHARACTER SET UTF8 NOT NULL,
                       longitude FLOAT ,
                       latitude FLOAT,
                       region VARCHAR(100) CHARACTER SET UTF8,
                       population INT,
                       capital VARCHAR(100) CHARACTER SET UTF8,
-                      PRIMARY KEY(country, city)
+                      UNIQUE(country, city)
+                      
 
   )
   """)
 
     # Creating the companies table
     my_cursor.execute("""CREATE TABLE companies (
-                      company_name VARCHAR(100) CHARACTER SET UTF8,
-                      country VARCHAR(100) CHARACTER SET UTF8,
-                      city VARCHAR(100) CHARACTER SET UTF8,
-                      FOREIGN KEY(country, city) REFERENCES locations(country, city),
+                      company_name VARCHAR(100) CHARACTER SET UTF8 NOT NULL,
+                      location_id INT,
+                      FOREIGN KEY(location_id) REFERENCES locations(id),
                       size VARCHAR(100) CHARACTER SET UTF8,
                       founded INTEGER,
                       type VARCHAR(100) CHARACTER SET UTF8,
@@ -68,10 +69,8 @@ def create_db():
                       company VARCHAR(100) CHARACTER SET UTF8,
                       FOREIGN KEY(company) REFERENCES companies(company_name),
                       scrape_date DATETIME,
-                      location VARCHAR(100) CHARACTER SET UTF8,
-                      country VARCHAR(100) CHARACTER SET UTF8,
-                      city VARCHAR(100) CHARACTER SET UTF8,
-                      FOREIGN KEY(country, city) REFERENCES locations(country, city),
+                      location_id INT,
+                      FOREIGN KEY(location_id) REFERENCES locations(id),
                       PRIMARY KEY(job_id)
   )
   """)
