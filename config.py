@@ -22,8 +22,8 @@ REST_COUNTRIES_A = 'https://restcountries.eu/rest/v2/name/'
 REST_COUNTRIES_B = '?fullText=true'
 HOST = "localhost"
 USER = "root"
-PASSWORD = "timafeld"
-DB = "Glassdoor_7"
+PASSWORD = "**"
+DB = "GlassdoorDB"
 COMMIT_ITER = 1000
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
