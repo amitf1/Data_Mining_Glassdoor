@@ -25,6 +25,11 @@ USER = "root"
 PASSWORD = "**"
 DB = "GlassdoorDB"
 COMMIT_ITER = 1000
+CHROME_OPTIONS = webdriver.ChromeOptions()
+CHROME_OPTIONS.add_argument('--no-sandbox')
+CHROME_OPTIONS.add_argument('--headless')
+CHROME_OPTIONS.add_argument('--disable-dev-shm-usage')
+CHROME_OPTIONS.add_argument("--incognito")
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler(f'GDScraper_{datetime.now()}.log')
@@ -33,5 +38,4 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument("--incognito")
+

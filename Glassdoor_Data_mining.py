@@ -46,7 +46,7 @@ class GDScraper:
             raise FileNotFoundError("'ChromeDriver' executable needs to be in path."
                                     "Please see https://sites.google.com/a/chromium.org/chromedriver/home")
 
-        self._driver = webdriver.Chrome(executable_path=path)
+        self._driver = webdriver.Chrome(executable_path=path, options=CFG.CHROME_OPTIONS)
         self.search_links = search_links
         self.job_links = []
         self.df = pd.DataFrame()
