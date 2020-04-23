@@ -570,6 +570,7 @@ def scrape_glassdoor(limit_search_pages, limit_job_posts, search_option):
         search_links = [CFG.INITIAL_LINKS[search_option]]
     gd_scraper = GDScraper(CFG.PATH_OF_CHROME_DRIVER, search_links)
     gd_scraper.gather_job_links(limit_search_pages)
+    glassdoor_jobs = pd.DataFrame()
     glassdoor_jobs = gd_scraper.gather_data_from_links(limit_job_posts)
     glassdoor_jobs.to_csv(f"glassdoor_jobs{datetime.now()}.csv")
     mydb = mysql.connector.connect(host=CFG.HOST, user=CFG.USER, passwd=CFG.PASSWORD, database=CFG.DB)
