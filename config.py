@@ -9,6 +9,7 @@ JOBS_IN_UK = 'https://www.glassdoor.com/Job/uk-jobs-SRCH_IL.0,2_IN2.htm?fromAge=
 DATA_SCIENTISTS_USA = 'https://www.glassdoor.com/Job/us-data-scientist-jobs-SRCH_IL.0,2_IN1_KO3,' \
                       '17.htm?fromAge=1&radius=25'
 INITIAL_LINKS = [JOBS_IN_ISRAEL, DATA_SCIENTISTS_USA, JOBS_IN_UK]
+# 'https://www.glassdoor.com/Job/india-jobs-SRCH_IL.0,5_IN115.htm?fromAge=1'
 START_OF_LOCATION = 3
 RELOAD_TRIALS = 3
 MAX_SEARCH_PAGES = 30
@@ -26,9 +27,9 @@ PASSWORD = "**"
 DB = "GlassdoorDB"
 COMMIT_ITER = 1000
 CHROME_OPTIONS = webdriver.ChromeOptions()
-CHROME_OPTIONS.add_argument('--no-sandbox')
-CHROME_OPTIONS.add_argument('--headless')
-CHROME_OPTIONS.add_argument('--disable-dev-shm-usage')
+# CHROME_OPTIONS.add_argument('--no-sandbox')
+# CHROME_OPTIONS.add_argument('--headless')
+# CHROME_OPTIONS.add_argument('--disable-dev-shm-usage')
 CHROME_OPTIONS.add_argument("--incognito")
 logger = logging.getLogger("glassdoor_scraper")
 logger.setLevel(logging.DEBUG)

@@ -313,6 +313,9 @@ class GDScraper:
                                """)
             row['location_id'] = my_cursor.fetchone()[0]
             row = row.tolist()
+            if row[0] is None or row[0] == 'None':
+                CFG.logger.info(f'row {i} skipped because non existing job id, missed info:\n{row}')
+                continue
             row[0] = int(row[0])
             row = tuple(row)
             my_cursor.execute("""INSERT IGNORE INTO job_reqs (
@@ -570,12 +573,13 @@ def scrape_glassdoor(limit_search_pages, limit_job_posts, search_option):
         search_links = [CFG.INITIAL_LINKS[search_option]]
     gd_scraper = GDScraper(CFG.PATH_OF_CHROME_DRIVER, search_links)
     gd_scraper.gather_job_links(limit_search_pages)
-    glassdoor_jobs = pd.DataFrame()
     glassdoor_jobs = gd_scraper.gather_data_from_links(limit_job_posts)
     glassdoor_jobs.to_csv(f"glassdoor_jobs{datetime.now()}.csv")
     mydb = mysql.connector.connect(host=CFG.HOST, user=CFG.USER, passwd=CFG.PASSWORD, database=CFG.DB)
+    # gd_scraper.df = pd.read_csv('glassdoor_jobs2020-04-24 07:55:21.074133.csv')
     gd_scraper.location_to_mysql(mydb)
     gd_scraper.company_to_mysql(mydb)
+
     gd_scraper.jobs_to_mysql(mydb)
     gd_scraper.skills_to_mysql(mydb)
     return
